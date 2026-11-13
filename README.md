@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Orion
 
-## Getting Started
+A responsive, local-first project-management prototype built with Next.js, React, and TypeScript.
 
-First, run the development server:
+## Run
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+npm install
+npm run dev -- --hostname 0.0.0.0 --port 3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000`. No environment variables or service credentials are needed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Workspace overview with live progress metrics and recent activity.
+- Create and search projects; open a project to view its tasks.
+- Create and edit tasks with project, assignee, priority, due date, and status.
+- List and kanban board views; update status with inline selectors or completion controls.
+- Project cards with calculated task completion.
+- Sample team directory and one-click assigned-task views.
+- Workspace naming, JSON export and a two-step demo-data reset.
+- Browser-local persistence, keyboard-friendly dialogs, and mobile navigation.
 
-## Learn More
+## Checks
 
-To learn more about Next.js, take a look at the following resources:
+```sh
+npm run lint
+npx tsc --noEmit
+npm run build
+npx playwright test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Playwright expects an already-running app at `http://localhost:3000`, or a different URL supplied via `BASE_URL`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Prototype boundaries
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The original brief did not specify a product, so Orion is assumed to be a personal project-management workspace. Sample projects and people initialize the app. Data is saved in the current browser's localStorage, not a server. The four sample teammates are local demo records; assigning tasks does not send notifications. There is no authentication, real-time collaboration, email service, or production deployment. A production version would need a database/API, user and workspace authorization, a real invitation service, and operational hardening. Dates use November 13, 2026 as the sample-data reference; activity created by users uses their current browser time.

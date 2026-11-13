@@ -1,69 +1,99 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useRef, useState, type FormEvent } from "react";
+
+type Status = "To do" | "In progress" | "Done";
+type Project = { id: string; name: string; description: string; color: string; icon: string; due: string };
+type Task = { id: string; title: string; projectId: string; status: Status; priority: string; assignee: string; due: string };
+type Activity = { id: string; text: string; time: string };
+type Data = { projects: Project[]; tasks: Task[]; activity: Activity[]; workspace: string };
+const members = [{ name: "Alex Morgan", role: "Product lead", initials: "AM", color: "purple" }, { name: "Jamie Chen", role: "Product designer", initials: "JC", color: "orange" }, { name: "Sam Rivera", role: "Frontend engineer", initials: "SR", color: "blue" }, { name: "Taylor Kim", role: "Brand designer", initials: "TK", color: "green" }];
+const seed: Data = {
+  workspace: "Orion workspace",
+  projects: [
+    { id: "p1", name: "Website redesign", description: "A fresh experience for our next chapter.", color: "purple", icon: "◈", due: "2026-11-27" },
+    { id: "p2", name: "Mobile app", description: "Bring the entire experience into your pocket.", color: "blue", icon: "▣", due: "2026-12-04" },
+    { id: "p3", name: "Brand refresh", description: "Same ambition. A whole new identity.", color: "orange", icon: "✳", due: "2026-11-30" },
+    { id: "p4", name: "Product launch", description: "Make our next big thing a little bigger.", color: "green", icon: "↗", due: "2026-12-11" },
+  ],
+  tasks: [
+    { id: "t1", title: "Design the new homepage", projectId: "p1", status: "In progress", priority: "High", assignee: "Jamie Chen", due: "2026-11-16" },
+    { id: "t2", title: "Build onboarding screens", projectId: "p2", status: "In progress", priority: "High", assignee: "Sam Rivera", due: "2026-11-17" },
+    { id: "t3", title: "Explore logo concepts", projectId: "p3", status: "To do", priority: "Medium", assignee: "Taylor Kim", due: "2026-11-18" },
+    { id: "t4", title: "Write launch announcement", projectId: "p4", status: "To do", priority: "Medium", assignee: "Alex Morgan", due: "2026-11-20" },
+    { id: "t5", title: "Finalize navigation structure", projectId: "p1", status: "Done", priority: "Low", assignee: "Alex Morgan", due: "2026-11-12" },
+    { id: "t6", title: "Complete user research", projectId: "p2", status: "Done", priority: "Medium", assignee: "Jamie Chen", due: "2026-11-12" },
+    { id: "t7", title: "Define the color palette", projectId: "p3", status: "Done", priority: "Low", assignee: "Taylor Kim", due: "2026-11-11" },
+    { id: "t8", title: "Map the launch timeline", projectId: "p4", status: "Done", priority: "High", assignee: "Alex Morgan", due: "2026-11-10" },
+    { id: "t9", title: "Build reusable components", projectId: "p1", status: "To do", priority: "Medium", assignee: "Sam Rivera", due: "2026-11-23" },
+    { id: "t10", title: "Review accessibility", projectId: "p1", status: "To do", priority: "High", assignee: "Jamie Chen", due: "2026-11-25" },
+  ],
+  activity: [{ id: "a1", text: "Alex completed Finalize navigation structure", time: "2026-11-13T09:40:00" }, { id: "a2", text: "Jamie started Build onboarding screens", time: "2026-11-13T09:15:00" }, { id: "a3", text: "Taylor completed Define the color palette", time: "2026-11-12T16:30:00" }],
+};
+function Icon({ name, size = 20 }: { name: string; size?: number }) {
+  const paths: Record<string, React.ReactNode> = {
+    overview: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
+    projects: <path d="M3 7V5a2 2 0 0 1 2-2h5l3 4h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>,
+    tasks: <><rect x="4" y="3" width="16" height="18" rx="3"/><path d="m8 9 2 2 5-5M8 16h8"/></>,
+    team: <><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 5"/></>,
+    activity: <path d="M3 12h4l3-8 4 16 3-8h4"/>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 2 4h5l1-3 3-1 2-3-2-2 1-3-3-2-2-4Z"/></>,
+    search: <><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></>,
+    bell: <><path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5l-2 3ZM10 21h4"/></>,
+    arrow: <path d="M5 12h14m-5-5 5 5-5 5"/>,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18"/></>,
+    check: <path d="m5 12 4 4L19 6"/>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+    plus: <path d="M12 5v14M5 12h14"/>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.projects}</svg>;
+}
+function date(value: string) { return new Date(value + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+function Avatar({ name, small = false }: { name: string; small?: boolean }) { const m = members.find(m => m.name === name) || members[0]; return <span title={name} className={`avatar ${m.color} ${small ? "small" : ""}`}>{m.initials}</span>; }
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+  const [data, setData] = useState<Data>(seed);
+  const [ready, setReady] = useState(false);
+  const [view, setView] = useState("Overview");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All projects");
+  const [statusFilter, setStatusFilter] = useState("All statuses");
+  const [board, setBoard] = useState(false);
+  const [modal, setModal] = useState<"project" | "task" | null>(null);
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [toast, setToast] = useState("");
+  const [menu, setMenu] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [newStatus, setNewStatus] = useState<Status>("To do");
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => { Promise.resolve().then(() => { try { const saved = localStorage.getItem("orion-v1"); if (saved) { const parsed = JSON.parse(saved); if (Array.isArray(parsed.projects) && Array.isArray(parsed.tasks) && Array.isArray(parsed.activity) && typeof parsed.workspace === "string") setData(parsed); } } catch { setToast("Saved data could not be loaded; using the demo workspace."); } setReady(true); }); }, []);
+  useEffect(() => { if (ready) { try { localStorage.setItem("orion-v1", JSON.stringify(data)); } catch { Promise.resolve().then(() => setToast("Browser storage is unavailable. Changes last for this session only.")); } } }, [data, ready]);
+  useEffect(() => { if (toast) { const timer = setTimeout(() => setToast(""), 4000); return () => clearTimeout(timer); } }, [toast]);
+  useEffect(() => { if (modal) { const previous = document.activeElement as HTMLElement | null; const overflow = document.body.style.overflow; document.body.style.overflow = "hidden"; formRef.current?.querySelector<HTMLInputElement>("input")?.focus(); const handler = (event: KeyboardEvent) => { if (event.key === "Escape") setModal(null); if (event.key === "Tab") { const elements = formRef.current?.querySelectorAll<HTMLElement>("button, input, select, textarea"); if (!elements?.length) return; const first = elements[0], last = elements[elements.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }; document.addEventListener("keydown", handler); return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = overflow; previous?.focus(); }; } }, [modal]);
+  const completed = data.tasks.filter(t => t.status === "Done").length;
+  const progress = data.tasks.filter(t => t.status === "In progress").length;
+  const shownProjects = data.projects.filter(p => `${p.name} ${p.description}`.toLowerCase().includes(search.toLowerCase()));
+  const shownTasks = data.tasks.filter(t => (filter === "All projects" || t.projectId === filter) && (statusFilter === "All statuses" || t.status === statusFilter) && `${t.title} ${t.assignee} ${data.projects.find(p => p.id === t.projectId)?.name}`.toLowerCase().includes(search.toLowerCase()));
+  function navigate(next: string) { setView(next); setSearch(""); setFilter("All projects"); setStatusFilter("All statuses"); setMenu(false); setResetConfirm(false); }
+  function log(text: string, next: Data) { setData({ ...next, activity: [{ id: crypto.randomUUID(), text, time: new Date().toISOString() }, ...next.activity].slice(0, 60) }); }
+  function changeStatus(task: Task, status: Status) { log(`Alex moved ${task.title} to ${status.toLowerCase()}`, { ...data, tasks: data.tasks.map(t => t.id === task.id ? { ...t, status } : t) }); setToast(`Task moved to ${status.toLowerCase()}`); }
+  function openTask(task?: Task, status: Status = "To do") { if (!data.projects.length) { setModal("project"); setToast("Create a project before adding a task."); return; } setEditing(task || null); setNewStatus(status); setModal("task"); }
+  function save(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); const title = String(form.get("title")).trim(); if (!title) { setToast("Please enter a name."); return; } if (modal === "project") { const p: Project = { id: crypto.randomUUID(), name: title, description: String(form.get("description")).trim(), color: String(form.get("color")), icon: "◈", due: String(form.get("due")) }; log(`Alex created ${title}`, { ...data, projects: [...data.projects, p] }); setToast("Project created"); navigate("Tasks"); setFilter(p.id); } else { const task: Task = { id: editing?.id || crypto.randomUUID(), title, projectId: String(form.get("projectId")), status: String(form.get("status")) as Status, priority: String(form.get("priority")), assignee: String(form.get("assignee")), due: String(form.get("due")) }; log(`Alex ${editing ? "updated" : "created"} ${title}`, { ...data, tasks: editing ? data.tasks.map(t => t.id === editing.id ? task : t) : [task, ...data.tasks] }); setToast(editing ? "Task updated" : "Task created"); } setModal(null); }
+  function projectCard(p: Project) { const tasks = data.tasks.filter(t => t.projectId === p.id); const done = tasks.filter(t => t.status === "Done").length; const percent = tasks.length ? Math.round(done / tasks.length * 100) : 0; return <button className="project-card" key={p.id} onClick={() => { navigate("Tasks"); setFilter(p.id); }}><div className="card-top"><span className={`project-icon ${p.color}`}>{p.icon}</span><span className="badge neutral">{percent === 100 && tasks.length ? "Completed" : "In progress"}</span><span className="card-arrow">↗</span></div><h3>{p.name}</h3><p>{p.description || "Your next great project starts here."}</p><div className="progress-label"><span>Progress</span><strong>{percent}%</strong></div><div className="progress-track"><span className={p.color} style={{ width: `${percent}%` }}/></div><div className="card-footer"><div className="avatar-stack">{Array.from(new Set(tasks.map(t => t.assignee))).slice(0, 3).map(n => <Avatar key={n} name={n} small/>)}{!tasks.length && <span className="muted">No tasks yet</span>}</div><span><Icon name="calendar" size={14}/>{date(p.due)}</span></div></button>; }
+  function taskRow(t: Task) { const p = data.projects.find(p => p.id === t.projectId); return <tr key={t.id}><td><div className="task-name"><button className={`task-check ${t.status === "Done" ? "checked" : ""}`} aria-label={`${t.status === "Done" ? "Reopen" : "Complete"} ${t.title}`} onClick={() => changeStatus(t, t.status === "Done" ? "To do" : "Done")}>{t.status === "Done" && <Icon name="check" size={13}/>}</button><button className={t.status === "Done" ? "done-title" : ""} onClick={() => openTask(t)}>{t.title}</button></div></td><td><span className={`project-dot ${p?.color}`}/>{p?.name}</td><td><select className={`status-select ${t.status === "Done" ? "complete" : t.status === "In progress" ? "active" : "todo"}`} value={t.status} aria-label={`Status for ${t.title}`} onChange={e => changeStatus(t, e.target.value as Status)}>{["To do", "In progress", "Done"].map(s => <option key={s}>{s}</option>)}</select></td><td><span className={`priority ${t.priority.toLowerCase()}`}><span>⚑</span>{t.priority}</span></td><td><Avatar name={t.assignee} small/></td><td>{date(t.due)}</td></tr>; }
+  return <div className="app-shell">
+    <aside inert={!!modal} className={`sidebar ${menu ? "mobile-open" : ""}`}><a className="brand" href="#" onClick={e => { e.preventDefault(); navigate("Overview"); }}><span className="brand-mark">✳</span>orion<span className="brand-period">.</span></a><button className="workspace-switch" onClick={() => navigate("Settings")}><span className="workspace-logo">O</span><span>{data.workspace}<small>Personal workspace</small></span><span className="chevrons">⌃<br/>⌄</span></button><div className="nav-label">WORKSPACE</div><nav>{["Overview", "Projects", "Tasks", "Team", "Activity"].map(n => <button key={n} className={`nav-item ${view === n ? "selected" : ""}`} onClick={() => navigate(n)}><Icon name={n.toLowerCase()}/>{n}{n === "Tasks" && <span className="nav-count">{data.tasks.filter(t => t.status !== "Done").length}</span>}</button>)}</nav><div className="sidebar-projects"><div className="nav-label">YOUR PROJECTS<button aria-label="Create project" onClick={() => setModal("project")}>+</button></div>{data.projects.slice(0, 5).map(p => <button key={p.id} onClick={() => { navigate("Tasks"); setFilter(p.id); }}><span className={`project-dot ${p.color}`}/>{p.name}</button>)}</div><div className="sidebar-bottom"><div className="local-note"><span>✧</span><strong>A little space. Big possibilities.</strong><p>Everything you need to turn ideas into progress.</p><button onClick={() => setModal("project")}>Start something new <span>↗</span></button></div><button className={`nav-item ${view === "Settings" ? "selected" : ""}`} onClick={() => navigate("Settings")}><Icon name="settings"/>Settings</button><div className="profile"><Avatar name="Alex Morgan"/><div><strong>Alex Morgan</strong><small>Personal account</small></div><span className="online-dot"/></div></div></aside>
+    <div inert={!!modal} className="main-shell"><header className="topbar"><div className="breadcrumb"><button className="mobile-toggle" aria-label={menu ? "Close navigation" : "Open navigation"} onClick={() => setMenu(!menu)}>☰</button><Icon name="overview" size={17}/><span>Workspace</span><span className="slash">/</span><strong>{view}</strong></div><div className="topbar-right"><span className="demo-label"><span/>Local demo</span><button className="icon-button" aria-label="View activity" onClick={() => navigate("Activity")}><Icon name="bell"/><i/></button><Avatar name="Alex Morgan" small/></div></header>
+    <main><div className="page-heading"><div><div className="eyebrow">YOUR SPACE TO MAKE THINGS HAPPEN</div><h1>{view === "Overview" ? "Let’s make progress." : view === "Tasks" && filter !== "All projects" ? data.projects.find(p => p.id === filter)?.name : view === "Settings" ? "Make yourself at home." : view}</h1><p>{view === "Overview" ? "A clear view of your projects, your people, and what’s next." : view === "Projects" ? "Big ideas, organized. Find your next focus." : view === "Tasks" ? "One small step at a time. Keep the important work moving." : view === "Team" ? "Good work happens with great people." : view === "Activity" ? "The small wins that move your workspace forward." : "Your workspace, your way."}</p></div>{!["Settings", "Activity", "Team"].includes(view) && <button className="primary" onClick={() => view === "Tasks" ? openTask() : setModal("project")}><Icon name="plus" size={17}/>{view === "Tasks" ? "New task" : "New project"}</button>}</div>
+    {view === "Overview" && <><div className="stats-grid">{[{ label: "Total projects", value: data.projects.length, icon: "projects", foot: "Ideas taking shape", color: "purple" }, { label: "In progress", value: progress, icon: "clock", foot: "Tasks moving forward", color: "blue" }, { label: "Completed tasks", value: completed, icon: "check", foot: `${data.tasks.length ? Math.round(completed / data.tasks.length * 100) : 0}% of all tasks complete`, color: "green" }, { label: "Team members", value: members.length, icon: "team", foot: "Better, together", color: "orange" }].map(s => <div className="stat-card" key={s.label}><div><span>{s.label}</span><span className={`stat-icon ${s.color}`}><Icon name={s.icon} size={18}/></span></div><strong>{s.value}<span className="stat-spark">{s.icon === "check" ? "↗" : ""}</span></strong><small>{s.foot}</small></div>)}</div><div className="section-heading"><div><h2>Projects in motion <span>{data.projects.length}</span></h2><p>A little focus goes a long way.</p></div><button className="text-button" onClick={() => navigate("Projects")}>All projects <Icon name="arrow" size={16}/></button></div><div className="project-grid">{data.projects.slice(0, 4).map(projectCard)}</div></>}
+    {view === "Projects" && <><div className="toolbar"><label className="search"><Icon name="search" size={17}/><input aria-label="Search projects" placeholder="Search projects…" value={search} onChange={e => setSearch(e.target.value)}/></label><span className="muted">{shownProjects.length} projects</span></div><div className="project-grid all-projects">{shownProjects.map(projectCard)}</div>{!shownProjects.length && <div className="empty"><Icon name="projects" size={36}/><h3>No projects found</h3><p>Try another search or start a new project.</p><button className="primary" onClick={() => setModal("project")}>Create project</button></div>}</>}
+    {(view === "Tasks" || view === "Overview") && <section className="tasks-section"><div className="section-heading"><div><h2>{view === "Overview" ? "Your next moves" : "Project tasks"}<span>{view === "Overview" ? data.tasks.filter(t => t.status !== "Done").length : shownTasks.length}</span></h2>{view === "Overview" && <p>Turn a to-do into a done.</p>}</div><button className="text-button" onClick={() => view === "Overview" ? navigate("Tasks") : openTask()}>{view === "Overview" ? "All tasks" : "+ Add task"}<Icon name="arrow" size={16}/></button></div>{view === "Tasks" && <div className="toolbar"><label className="search"><Icon name="search" size={17}/><input placeholder="Search tasks…" value={search} onChange={e => setSearch(e.target.value)}/></label><div className="filters"><select aria-label="Filter project" value={filter} onChange={e => setFilter(e.target.value)}><option>All projects</option>{data.projects.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}</select><select aria-label="Filter status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>{["All statuses", "To do", "In progress", "Done"].map(s => <option key={s}>{s}</option>)}</select><div className="view-toggle"><button className={!board ? "chosen" : ""} onClick={() => setBoard(false)}>List</button><button className={board ? "chosen" : ""} onClick={() => setBoard(true)}>Board</button></div></div></div>}{board && view === "Tasks" ? <div className="board">{(["To do", "In progress", "Done"] as Status[]).map(s => <div className="board-column" key={s}><h3><span className={`project-dot ${s === "Done" ? "green" : s === "In progress" ? "purple" : "gray"}`}/>{s}<span>{shownTasks.filter(t => t.status === s).length}</span></h3>{shownTasks.filter(t => t.status === s).map(t => <div className="board-card" key={t.id}><small>{data.projects.find(p => p.id === t.projectId)?.name}</small><button className="board-title" onClick={() => openTask(t)}>{t.title}</button><div><span className={`priority ${t.priority.toLowerCase()}`}>⚑ {t.priority}</span><Avatar name={t.assignee} small/></div><select aria-label={`Status for ${t.title}`} value={t.status} onChange={e => changeStatus(t, e.target.value as Status)}>{["To do", "In progress", "Done"].map(v => <option key={v}>{v}</option>)}</select></div>)}<button className="board-add" onClick={() => openTask(undefined, s)}>+ Add task</button></div>)}</div> : <div className="table-wrap"><table><thead><tr><th>Task name</th><th>Project</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due date</th></tr></thead><tbody>{(view === "Overview" ? data.tasks.filter(t => t.status !== "Done").slice(0, 4) : shownTasks).map(taskRow)}</tbody></table>{!(view === "Overview" ? data.tasks.filter(t => t.status !== "Done") : shownTasks).length && <div className="empty"><h3>{view === "Overview" ? "You’re all caught up!" : "No tasks found"}</h3><p>Create a task or adjust your filters to get started.</p><button className="primary" onClick={() => openTask()}>Add task</button></div>}</div>}</section>}
+    {view === "Overview" && <div className="bottom-grid"><section className="activity-panel"><div className="section-heading"><h2>The latest in your workspace</h2><button className="text-button" onClick={() => navigate("Activity")}>View activity <Icon name="arrow" size={15}/></button></div>{data.activity.slice(0, 2).map(a => <div className="activity-row" key={a.id}><span className="activity-mark"><Icon name="check" size={15}/></span><div><p>{a.text}</p><small>{new Date(a.time).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</small></div></div>)}</section><div className="focus-card"><span className="focus-art">✦</span><div><small>A LITTLE REMINDER</small><h3>Great things start<br/>with a small step.</h3><button onClick={() => openTask()}>What’s your next move? <span>↗</span></button></div><div className="orbit orbit-one"/><div className="orbit orbit-two"/></div></div>}
+    {view === "Team" && <><div className="info-banner">Demo team · Task assignments are local; no invitations or messages are sent.</div><div className="team-grid">{members.map(m => <div className="member-card" key={m.name}><Avatar name={m.name}/><h3>{m.name}</h3><p>{m.role}</p><div><span className="badge neutral">{m.name === "Alex Morgan" ? "You · Owner" : "Member"}</span><span>{data.tasks.filter(t => t.assignee === m.name && t.status !== "Done").length} open tasks</span></div><button className="text-button" onClick={() => { navigate("Tasks"); setSearch(m.name); }}>View assigned tasks <Icon name="arrow" size={15}/></button></div>)}</div></>}
+    {view === "Activity" && <section className="activity-feed"><h2>Workspace activity <span className="muted">{data.activity.length}</span></h2>{data.activity.map(a => <div className="activity-row" key={a.id}><Avatar name={members.find(m => a.text.startsWith(m.name.split(" ")[0]))?.name || "Alex Morgan"}/><div><p>{a.text}</p><small>{new Date(a.time).toLocaleString()}</small></div></div>)}{!data.activity.length && <div className="empty">Your workspace activity will appear here.</div>}</section>}
+    {view === "Settings" && <div className="settings-panel"><h2>Workspace details</h2><p>Give your space a name that feels like you.</p><form onSubmit={e => { e.preventDefault(); const name = String(new FormData(e.currentTarget).get("workspace")).trim(); if (name) { setData({ ...data, workspace: name }); setToast("Workspace settings saved"); } }}><label>Workspace name<input name="workspace" defaultValue={data.workspace} maxLength={35} required/></label><button className="primary" type="submit">Save changes</button></form><div className="settings-divider"/><h2>Your data stays with you</h2><p>This prototype stores projects and tasks in this browser. It does not sync across devices.</p><button className="secondary" onClick={() => { const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); const a = document.createElement("a"); a.href = url; a.download = "orion-workspace.json"; a.click(); URL.revokeObjectURL(url); setToast("Workspace exported"); }}>Export workspace</button><div className="settings-divider"/><h2>Start fresh</h2><p>Reset all local changes and restore the sample workspace.</p><button className="secondary" onClick={() => { if (!resetConfirm) { setResetConfirm(true); return; } setData(seed); setResetConfirm(false); setToast("Demo workspace restored"); }}>{resetConfirm ? "Confirm reset" : "Reset demo data"}</button>{resetConfirm && <button className="text-button" onClick={() => setResetConfirm(false)}>Cancel reset</button>}</div>}
+    <footer className="page-footer"><span><span className="footer-star">✳</span> Less noise. More progress.</span><span>Made for the way you work.</span></footer></main></div>
+    {modal && <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setModal(null); }}><form ref={formRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onSubmit={save}><div className="modal-heading"><div><span className="eyebrow">MAKE ROOM FOR YOUR NEXT IDEA</span><h2 id="modal-title">{modal === "project" ? "Create a project" : editing ? "Edit task" : "Create a task"}</h2></div><button type="button" className="close-button" aria-label="Close dialog" onClick={() => setModal(null)}>×</button></div><label>{modal === "project" ? "Project name" : "Task name"}<input name="title" defaultValue={editing?.title || ""} placeholder={modal === "project" ? "e.g. A new beginning" : "What needs to happen?"} maxLength={100} required/></label>{modal === "project" ? <><label>Description<textarea name="description" placeholder="What’s this project all about?" maxLength={250}/></label><label>Project color<select aria-label="Project color" name="color">{["purple", "blue", "orange", "green"].map(c => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}</select></label></> : <><label>Project<select aria-label="Project" name="projectId" defaultValue={editing?.projectId || (filter !== "All projects" ? filter : data.projects[0]?.id)} required>{data.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><div className="form-grid"><label>Status<select aria-label="Status" name="status" defaultValue={editing?.status || newStatus}>{["To do", "In progress", "Done"].map(s => <option key={s}>{s}</option>)}</select></label><label>Priority<select aria-label="Priority" name="priority" defaultValue={editing?.priority || "Medium"}>{["Low", "Medium", "High"].map(s => <option key={s}>{s}</option>)}</select></label></div><label>Assignee<select aria-label="Assignee" name="assignee" defaultValue={editing?.assignee || "Alex Morgan"}>{members.map(m => <option key={m.name}>{m.name}</option>)}</select></label></>}<label>Due date<input type="date" name="due" defaultValue={editing?.due || ""} required/></label><div className="modal-actions">{editing && modal === "task" && <button type="button" className="delete-button" onClick={() => { log(`Alex deleted ${editing.title}`, { ...data, tasks: data.tasks.filter(t => t.id !== editing.id) }); setModal(null); setToast("Task deleted"); }}>Delete task</button>}<button type="button" className="secondary" onClick={() => setModal(null)}>Cancel</button><button className="primary" type="submit">{editing && modal === "task" ? "Save changes" : modal === "project" ? "Create project" : "Create task"}</button></div></form></div>}
+    {toast && <div className="toast" role="status"><Icon name="check" size={17}/>{toast}</div>}
+  </div>;
 }
